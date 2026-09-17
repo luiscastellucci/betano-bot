@@ -185,13 +185,21 @@ async def revisar_partido(page, url: str):
         return nombre, encontradas
 
 
-async def revisar_uno(context, url: str):
+# Cuántos partidos como máximo se revisan AL MISMO TIEMPO. Si el servidor
+# donde corre tiene poca memoria (como los planes gratuitos), un número
+# muy alto puede hacer que el navegador se quede sin memoria y se caiga
+# ("Page crashed"). 3-4 es un buen equilibrio entre velocidad y estabilidad.
+MAX_SIMULTANEOS = 3
+
+
+async def revisar_uno(context, url: str, semaforo: asyncio.Semaphore):
     """Abre una pestaña propia para este partido y lo revisa."""
-    page = await context.new_page()
-    try:
-        nombre, señales_encontradas = await revisar_partido(page, url)
-    finally:
-        await page.close()
+    async with semaforo:
+        page = await context.new_page()
+        try:
+            nombre, señales_encontradas = await revisar_partido(page, url)
+        finally:
+            await page.close()
 
     estado = f"DISPONIBLE ({', '.join(señales_encontradas)})" if señales_encontradas else "todavía no"
     print(f"[{time.strftime('%H:%M:%S')}] {nombre} -> {estado}")
@@ -218,10 +226,10 @@ async def ciclo_de_revision(browser):
     else:
         partidos = MATCHES
 
-    # Revisamos todos los partidos AL MISMO TIEMPO (cada uno en su propia
-    # pestaña), en vez de uno por uno, para que el ciclo completo no tarde
-    # más cuanto más partidos agreguemos.
-    tareas = [revisar_uno(context, url) for url in partidos if url not in ya_avisados]
+    # Revisamos varios partidos en simultáneo, pero limitado a
+    # MAX_SIMULTANEOS a la vez, para no saturar la memoria del servidor.
+    semaforo = asyncio.Semaphore(MAX_SIMULTANEOS)
+    tareas = [revisar_uno(context, url, semaforo) for url in partidos if url not in ya_avisados]
     if tareas:
         await asyncio.gather(*tareas)
 
