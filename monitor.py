@@ -189,7 +189,7 @@ async def revisar_partido(page, url: str):
 # donde corre tiene poca memoria (como los planes gratuitos), un número
 # muy alto puede hacer que el navegador se quede sin memoria y se caiga
 # ("Page crashed"). 3-4 es un buen equilibrio entre velocidad y estabilidad.
-MAX_SIMULTANEOS = 3
+MAX_SIMULTANEOS = 1
 
 
 async def revisar_uno(context, url: str, semaforo: asyncio.Semaphore):
