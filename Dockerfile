@@ -1,5 +1,9 @@
 FROM python:3.12-slim
 
+# Hace que los mensajes de Python se muestren al instante en los logs
+# (sin esto, a veces se "pierden" mensajes si el proceso se corta de golpe)
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
 COPY requirements.txt .

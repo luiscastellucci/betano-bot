@@ -219,9 +219,12 @@ async def ciclo_de_revision(browser):
     )
     # Bloqueamos imágenes, videos y fuentes: no las necesitamos para buscar
     # texto, y esto ahorra bastante memoria y ancho de banda.
+    async def bloquear_media(route):
+        await route.abort()
+
     await context.route(
         re.compile(r"\.(png|jpg|jpeg|gif|webp|svg|mp4|woff2?|ttf)(\?.*)?$", re.IGNORECASE),
-        lambda route: route.abort(),
+        bloquear_media,
     )
 
     if DESCUBRIR_PARTIDOS_AUTOMATICAMENTE:
