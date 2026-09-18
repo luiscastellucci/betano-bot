@@ -189,7 +189,7 @@ async def revisar_partido(page, url: str):
 # donde corre tiene poca memoria (como los planes gratuitos), un número
 # muy alto puede hacer que el navegador se quede sin memoria y se caiga
 # ("Page crashed"). 3-4 es un buen equilibrio entre velocidad y estabilidad.
-MAX_SIMULTANEOS = 1
+MAX_SIMULTANEOS = 2
 
 
 async def revisar_uno(context, url: str, semaforo: asyncio.Semaphore):
@@ -217,6 +217,12 @@ async def ciclo_de_revision(browser):
             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
         )
     )
+    # Bloqueamos imágenes, videos y fuentes: no las necesitamos para buscar
+    # texto, y esto ahorra bastante memoria y ancho de banda.
+    await context.route(
+        re.compile(r"\.(png|jpg|jpeg|gif|webp|svg|mp4|woff2?|ttf)(\?.*)?$", re.IGNORECASE),
+        lambda route: route.abort(),
+    )
 
     if DESCUBRIR_PARTIDOS_AUTOMATICAMENTE:
         page_liga = await context.new_page()
@@ -240,7 +246,14 @@ async def main():
     print("Arrancó el monitor. Revisando cada", CHECK_INTERVAL_SECONDS, "segundos...")
     async with async_playwright() as p:
         # headless=True para que no abra ventana visible (necesario en servidor)
-        browser = await p.chromium.launch(headless=not MODO_VISIBLE)
+        browser = await p.chromium.launch(
+            headless=not MODO_VISIBLE,
+            args=[
+                "--disable-dev-shm-usage",  # evita crashes por poca memoria compartida en Docker
+                "--no-sandbox",
+                "--disable-gpu",
+            ],
+        )
 
         while True:
             await ciclo_de_revision(browser)
